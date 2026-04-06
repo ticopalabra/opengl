@@ -83,8 +83,13 @@ int main( void ) {
   "#version 410 core\n"
   "in vec3 vp;"
   "void main() {"
-  "  gl_Position = vec4( vp, 1.0 );"
+  "  gl_Position = vec4(vp, 1.0/(abs(vp.x))+abs(vp.y));"
   "}";
+
+  //"  gl_Position = vec4( vp, 1.0 );"                     //centered
+  //"  gl_Position = vec4(vp.x, vp.y + 1.0, vp.z, 1.0);"   //offset to the top
+  //"  gl_Position = vec4(vp, 1.0/(vp.x+vp.y+vp.z));"      //perspective: fails as sum can be zero hence divide by zero!
+  //"  gl_Position = vec4(vp, 1.0/(abs(vp.x))+abs(vp.y));" // perspective: it works better!
 
   const char* fragment_shader =
   "#version 410 core\n"
