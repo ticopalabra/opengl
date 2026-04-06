@@ -1,2 +1,2 @@
 #!bin/sh
-gcc main.c glad/src/glad.c -I ./glad/include/ -lglfw -lGL
+gcc main.c glad/src/glad.c -I ./glad/include/ -lglfw -lGL -o triangle
