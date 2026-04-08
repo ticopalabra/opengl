@@ -1,5 +1,7 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <glad/glad.h>
+#include <assert.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -125,7 +127,7 @@ int main( void ) {
   */
 
   // Load Vertex shader from file
-  FILE* vs_file = fopen("shader.vert", "r");
+  FILE* vs_file = fopen("shader2.vert", "r");
   if (!vs_file) {
     fprintf(stderr, "ERROR: Could not open shader.vert\n");
     glfwTerminate();
@@ -202,9 +204,13 @@ int main( void ) {
   glDeleteShader( vs );
   glDeleteShader( fs );
   
-
-  double prev_s = glfwGetTime();  // Set the initial 'previous time'.
+  
+  double prev_s =  glfwGetTime(); // Set the initial 'previous time'.
   double title_countdown_s = 0.1;
+  
+  int time_loc = glGetUniformLocation( shader_program, "time" );
+  assert( time_loc > -1 ); // If this assert fails, check the name of the uniform variable in the shader, and that it's actually used in the shader code.
+
 
   while ( !glfwWindowShouldClose( window ) ) {
     double curr_s     = glfwGetTime();   // Get the current time.
@@ -242,8 +248,12 @@ int main( void ) {
 
     // Put the shader program, and the VAO, in focus in OpenGL's state machine.
     glUseProgram( shader_program );
+    
+    // Update the 'time' uniform in the shader to the current time in seconds.
+    glUniform1f( time_loc, (float)curr_s );
+        
     glBindVertexArray( vao );
-
+    
     // Draw points 0-3 from the currently bound VAO with current in-use shader.
     glDrawArrays( GL_TRIANGLES, 0, 3 );
 
