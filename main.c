@@ -1,9 +1,20 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
+#include <stdbool.h>
 #include <stdio.h>
+#include <stdlib.h>
+
+void error_callback_glfw(int error, const char* description) {
+  fprintf( stderr, "GLFW ERROR: code %i msg: %s.\n", error, description );
+}
 
 int main( void ) {
   // Start OpenGL context and OS window using the GLFW helper library.
+  printf( "Starting GLFW %s.\n", glfwGetVersionString() );
+
+  // Register the error callback function that we wrote earlier.
+  glfwSetErrorCallback( error_callback_glfw );
+
   if ( !glfwInit() ) {
     fprintf( stderr, "ERROR: could not start GLFW3.\n" );
     return 1;
@@ -15,13 +26,48 @@ int main( void ) {
   glfwWindowHint( GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE );
   glfwWindowHint( GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE );
 
+  //MSAA
+  glfwWindowHint( GLFW_SAMPLES, 16 );
+
   // Create a window on the operating system, then tie the OpenGL context to it.
+  /*
   GLFWwindow* window = glfwCreateWindow( 800, 600, "Hello Triangle", NULL, NULL );
   if ( !window ) {
     fprintf( stderr, "ERROR: Could not open window with GLFW3.\n" );
     glfwTerminate();
     return 1;
   }
+  */
+  // Set this to false to go back to windowed mode.
+  //bool full_screen = true; 
+  bool full_screen = false; 
+
+  GLFWmonitor *mon = NULL;
+  int win_w = 800, win_h = 600; // Our window dimensions, in pixels.
+
+  if ( full_screen ) {
+    mon = glfwGetPrimaryMonitor();
+
+    const GLFWvidmode* mode = glfwGetVideoMode( mon );
+
+    // Hinting these properties lets us use "borderless full screen" mode.
+    glfwWindowHint( GLFW_RED_BITS, mode->redBits );
+    glfwWindowHint( GLFW_GREEN_BITS, mode->greenBits );
+    glfwWindowHint( GLFW_BLUE_BITS, mode->blueBits );
+    glfwWindowHint( GLFW_REFRESH_RATE, mode->refreshRate );
+
+    win_w = mode->width;  // Use our 'desktop' resolution for window size
+    win_h = mode->height; // to get a 'full screen borderless' window.
+  }
+
+  GLFWwindow *window = glfwCreateWindow(
+    win_w,
+    win_h,
+    "Extended OpenGL Init",
+    mon,
+    NULL
+  );
+
   glfwMakeContextCurrent( window );
                                   
   // Start Glad, so we can call OpenGL functions.
@@ -78,35 +124,73 @@ int main( void ) {
   glBindVertexArray( 0 );
   */
 
-  // Define the shaders
-  const char* vertex_shader =
-  "#version 410 core\n"
-  "in vec3 vp;"
-  "void main() {"
-  "  gl_Position = vec4(vp, 1.0/(abs(vp.x))+abs(vp.y));"
-  "}";
+  // Load Vertex shader from file
+  FILE* vs_file = fopen("shader.vert", "r");
+  if (!vs_file) {
+    fprintf(stderr, "ERROR: Could not open shader.vert\n");
+    glfwTerminate();
+    return 1;
+  }
+  fseek(vs_file, 0, SEEK_END);
+  long vs_size = ftell(vs_file);
+  fseek(vs_file, 0, SEEK_SET);
+  char* vertex_shader = (char*)malloc(vs_size + 1);
+  fread(vertex_shader, 1, vs_size, vs_file);
+  vertex_shader[vs_size] = '\0';
+  fclose(vs_file);
 
-  //"  gl_Position = vec4( vp, 1.0 );"                     //centered
-  //"  gl_Position = vec4(vp.x, vp.y + 1.0, vp.z, 1.0);"   //offset to the top
-  //"  gl_Position = vec4(vp, 1.0/(vp.x+vp.y+vp.z));"      //perspective: fails as sum can be zero hence divide by zero!
-  //"  gl_Position = vec4(vp, 1.0/(abs(vp.x))+abs(vp.y));" // perspective: it works better!
 
-  const char* fragment_shader =
-  "#version 410 core\n"
-  "out vec4 frag_colour;"
-  "void main() {"
-  "  frag_colour = vec4( 0.5, 0.0, 0.5, 1.0 );"
-  "}";
 
   // Create and compile the vertex shader
   GLuint vs = glCreateShader( GL_VERTEX_SHADER );
-  glShaderSource( vs, 1, &vertex_shader, NULL );
+  glShaderSource( vs, 1, (const GLchar **) &vertex_shader, NULL );
   glCompileShader( vs );
+
+  // After glCompileShader check for errors.
+  int params = -1;
+  glGetShaderiv( vs, GL_COMPILE_STATUS, &params );
+
+  // On error, capture the log and print it.
+  if ( GL_TRUE != params ) {
+    int max_length    = 2048, actual_length = 0;
+    char slog[2048];
+    glGetShaderInfoLog( vs, max_length, &actual_length, slog );
+    fprintf( stderr, "ERROR: Vertex Shader (index %u) did not compile.\n%s\n", vs, slog );
+    return 1;
+  }
+
+  // Load Fragment shader from file
+  FILE* fs_file = fopen("shader.frag", "r");
+  if (!fs_file) {
+    fprintf(stderr, "ERROR: Could not open shader.frag\n");
+    glfwTerminate();
+    return 1;
+  }
+  fseek(fs_file, 0, SEEK_END);
+  long fs_size = ftell(fs_file);
+  fseek(fs_file, 0, SEEK_SET);
+  char* fragment_shader = (char*)malloc(fs_size + 1);
+  fread(fragment_shader, 1, fs_size, fs_file);
+  fragment_shader[fs_size] = '\0';
+  fclose(fs_file);
 
   // Create and compile the fragment shader
   GLuint fs = glCreateShader( GL_FRAGMENT_SHADER );
-  glShaderSource( fs, 1, &fragment_shader, NULL );
+  glShaderSource( fs, 1, (const GLchar **) &fragment_shader, NULL );
   glCompileShader( fs );
+
+  // After glCompileShader check for errors.
+  params = -1;
+  glGetShaderiv( fs, GL_COMPILE_STATUS, &params );
+
+  // On error, capture the log and print it.
+  if ( GL_TRUE != params ) {
+    int max_length    = 2048, actual_length = 0;
+    char slog[2048];
+    glGetShaderInfoLog( fs, max_length, &actual_length, slog );
+    fprintf( stderr, "ERROR: Fragment Shader (index %u) did not compile.\n%s\n", fs, slog );
+    return 1;
+  }
 
   // Link the vertex and fragment shader into a shader program
   GLuint shader_program = glCreateProgram();
@@ -114,11 +198,46 @@ int main( void ) {
   glAttachShader( shader_program, fs );
   glLinkProgram( shader_program);
 
+  // Delete the now-unused shader objects
+  glDeleteShader( vs );
+  glDeleteShader( fs );
+  
+
+  double prev_s = glfwGetTime();  // Set the initial 'previous time'.
+  double title_countdown_s = 0.1;
+
   while ( !glfwWindowShouldClose( window ) ) {
+    double curr_s     = glfwGetTime();   // Get the current time.
+    double elapsed_s  = curr_s - prev_s; // Work out the time elapsed over the last frame.
+    prev_s            = curr_s;          // Set the 'previous time' for the next frame to use.
+
+    // Print the FPS, but not every frame, so it doesn't flicker too much.
+    title_countdown_s -= elapsed_s;
+    if ( title_countdown_s <= 0.0 && elapsed_s > 0.0 ) {
+      double fps        = 1.0 / elapsed_s;
+
+      // Create a string and put the FPS as the window title.
+      char tmp[256];
+      sprintf( tmp, "FPS %.2lf", fps );
+      glfwSetWindowTitle(window, tmp );
+      title_countdown_s = 0.1;
+    }
+
     // Update window events.
     glfwPollEvents();
+
+    if (GLFW_PRESS == glfwGetKey(window, GLFW_KEY_ESCAPE)) {
+      glfwSetWindowShouldClose(window, 1);
+    }
+
+    // Check if the window resized.
+    glfwGetWindowSize( window, &win_w, &win_h );
+    // Update the viewport (drawing area) to fill the window dimensions.
+    // try to comment out to se what happens
+		glViewport( 0, 0, win_w, win_h );
     
     // Wipe the drawing surface clear.
+    glClearColor( 0.6f, 0.6f, 0.8f, 1.0f );
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
     // Put the shader program, and the VAO, in focus in OpenGL's state machine.
@@ -127,15 +246,15 @@ int main( void ) {
 
     // Draw points 0-3 from the currently bound VAO with current in-use shader.
     glDrawArrays( GL_TRIANGLES, 0, 3 );
+
+    glfwSwapInterval( 0 ); // The value of 0 means "swap immediately".
+    //glfwSwapInterval( 1 ); // Lock to normal refresh rate for your monitor.
     
     // Put the stuff we've been drawing onto the visible area.
     glfwSwapBuffers( window );
   }
 
-  // Delete the now-unused shader objects
-  glDeleteShader( vs );
-  glDeleteShader( fs );
-  
+
   // Close OpenGL window, context, and any other GLFW resources.
   glfwTerminate();
   return 0;
