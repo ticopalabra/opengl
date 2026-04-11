@@ -162,7 +162,7 @@ int main( void ) {
   }
 
   // Load Fragment shader from file
-  FILE* fs_file = fopen("shader.frag", "r");
+  FILE* fs_file = fopen("shader2.frag", "r");
   if (!fs_file) {
     fprintf(stderr, "ERROR: Could not open shader.frag\n");
     glfwTerminate();
