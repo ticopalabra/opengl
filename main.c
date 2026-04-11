@@ -89,11 +89,17 @@ int main( void ) {
   printf( "OpenGL version supported %s.\n", glGetString( GL_VERSION ) );
 
   // Triangle definition  
-  float t_points[] = {
+  float triangle_points[] = {
    0.0f,  0.5f,  0.0f, // x,y,z of first point.
    0.5f, -0.5f,  0.0f, // x,y,z of second point.
   -0.5f, -0.5f,  0.0f  // x,y,z of third point.
   };
+
+  float triangle_colours[] = {
+  1.0f, 0.0f,  0.0f,
+  0.0f, 1.0f,  0.0f,
+  0.0f, 0.0f,  1.0f
+};
 
 
   // Hexagon definition with center plus 6 outer vertices, repeating the first outer vertex to close the fan.
@@ -109,16 +115,27 @@ int main( void ) {
   };
   // Set a vertex Buffer Object (VBO) and Vertex Array Object (VAO) for the triangle.
   GLuint triangle_vbo = 0;
-  GLuint triangle_vao = 0;
   glGenBuffers( 1, &triangle_vbo );
   glBindBuffer( GL_ARRAY_BUFFER, triangle_vbo );
-  glBufferData( GL_ARRAY_BUFFER, 3 * 3 * sizeof( float ), t_points, GL_STATIC_DRAW );
+  glBufferData( GL_ARRAY_BUFFER, 3 * 3 * sizeof( float ), triangle_points, GL_STATIC_DRAW );
+
+  GLuint colours_vbo = 0;
+  glGenBuffers(1, &colours_vbo);
+  glBindBuffer(GL_ARRAY_BUFFER, colours_vbo);
+  glBufferData(GL_ARRAY_BUFFER, 9 * sizeof(float), triangle_colours, GL_STATIC_DRAW);
+  
+  GLuint triangle_vao = 0;
   glGenVertexArrays( 1, &triangle_vao );
   glBindVertexArray( triangle_vao );
   glEnableVertexAttribArray( 0 );
   glBindBuffer( GL_ARRAY_BUFFER, triangle_vbo );
   glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 0, NULL );
-  glBindVertexArray( 0 );
+  //glBindVertexArray( 0 );
+
+  glEnableVertexAttribArray( 1 );
+  glBindBuffer(GL_ARRAY_BUFFER, colours_vbo);
+  glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, NULL);
+  //glBindVertexArray( 1 );
 
   // Set a vertex Buffer Object (VBO) for the hexagon.
   GLuint  hex_vbo = 0;
@@ -289,6 +306,11 @@ int main( void ) {
   int time_loc = glGetUniformLocation( bouncing_program, "time" );
   assert( time_loc > -1 ); // If this assert fails, check the name of the uniform variable in the shader, and that it's actually used in the shader code.
 
+  //glEnable(GL_CULL_FACE); // cull face
+  //glCullFace(GL_BACK); // cull back face
+  //glFrontFace(GL_CW); // GL_CCW for counter clock-wise
+  //glFrontFace(GL_CCW); // GL_CCW for counter clock-wise
+
   while ( !glfwWindowShouldClose( window ) ) {
     double curr_s     = glfwGetTime();   // Get the current time.
     double elapsed_s  = curr_s - prev_s; // Work out the time elapsed over the last frame.
@@ -329,14 +351,18 @@ int main( void ) {
     glBindVertexArray( triangle_vao );
     glDrawArrays( GL_TRIANGLES, 0, 3 );
 
-    // Draw the bouncing hexagon wireframe with bouncing shaders.
+    // Draw the bouncing hexagon with bouncing shaders.
+    glEnable( GL_BLEND );
+    glBlendFunc( GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA );
     glUseProgram( bouncing_program );
     glUniform1f( time_loc, (float)curr_s );
     glBindVertexArray( hex_vao );
-    glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+    //glPolygonMode( GL_FRONT_AND_BACK, GL_LINE ); //enable wireframe rendering mode for the hexagon
     glLineWidth( 2.0f );
     glDrawArrays( GL_TRIANGLE_FAN, 0, 8 );
-    glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+    glDisable( GL_BLEND );
+  
+    
 
     glBindVertexArray( 0 );
     glfwSwapInterval( 0 ); // The value of 0 means "swap immediately".

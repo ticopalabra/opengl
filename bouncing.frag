@@ -9,5 +9,5 @@ void main() {
   //frag_colour.rba = vec3( 1.0 );
   //frag_colour.g = wild;
   
-  frag_colour = vec4( pos, 1.0 );
+  frag_colour = vec4( pos, 0.8 );
 }
