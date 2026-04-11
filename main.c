@@ -89,17 +89,29 @@ int main( void ) {
   printf( "OpenGL version supported %s.\n", glGetString( GL_VERSION ) );
 
   // Triangle definition  
-  float points[] = {
+  float t_points[] = {
    0.0f,  0.5f,  0.0f, // x,y,z of first point.
    0.5f, -0.5f,  0.0f, // x,y,z of second point.
   -0.5f, -0.5f,  0.0f  // x,y,z of third point.
   };
 
-  // Set a vertex Buffer Ojbect (VBO)
+
+  // Hexagon definition with center plus 6 outer vertices, repeating the first outer vertex to close the fan.
+  float points[] = {
+    0.0f,  0.0f,  0.0f, // center
+    0.5f,  0.0f,  0.0f,
+    0.25f,  0.4330127f,  0.0f,
+   -0.25f,  0.4330127f,  0.0f,
+   -0.5f,  0.0f,  0.0f,
+   -0.25f, -0.4330127f,  0.0f,
+    0.25f, -0.4330127f,  0.0f,
+    0.5f,  0.0f,  0.0f  // repeat first outer vertex to close the fan
+  };
+  // Set a vertex Buffer Object (VBO)
   GLuint vbo = 0;
   glGenBuffers( 1, &vbo );
   glBindBuffer( GL_ARRAY_BUFFER, vbo );
-  glBufferData( GL_ARRAY_BUFFER, 9 * sizeof( float ), points, GL_STATIC_DRAW );
+  glBufferData( GL_ARRAY_BUFFER, 8 * 3 * sizeof( float ), points, GL_STATIC_DRAW );
 
   // Set a Vertex Array Object (VAO)
   GLuint vao = 0;
@@ -211,7 +223,6 @@ int main( void ) {
   int time_loc = glGetUniformLocation( shader_program, "time" );
   assert( time_loc > -1 ); // If this assert fails, check the name of the uniform variable in the shader, and that it's actually used in the shader code.
 
-
   while ( !glfwWindowShouldClose( window ) ) {
     double curr_s     = glfwGetTime();   // Get the current time.
     double elapsed_s  = curr_s - prev_s; // Work out the time elapsed over the last frame.
@@ -253,9 +264,12 @@ int main( void ) {
     glUniform1f( time_loc, (float)curr_s );
         
     glBindVertexArray( vao );
-    
-    // Draw points 0-3 from the currently bound VAO with current in-use shader.
-    glDrawArrays( GL_TRIANGLES, 0, 3 );
+
+    // Draw the hexagon wireframe with center spokes.
+    glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
+    glLineWidth( 2.0f );
+    glDrawArrays( GL_TRIANGLE_FAN, 0, 8 );
+    glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
 
     glfwSwapInterval( 0 ); // The value of 0 means "swap immediately".
     //glfwSwapInterval( 1 ); // Lock to normal refresh rate for your monitor.
