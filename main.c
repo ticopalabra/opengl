@@ -97,7 +97,7 @@ int main( void ) {
 
 
   // Hexagon definition with center plus 6 outer vertices, repeating the first outer vertex to close the fan.
-  float points[] = {
+  float hex_points[] = {
     0.0f,  0.0f,  0.0f, // center
     0.5f,  0.0f,  0.0f,
     0.25f,  0.4330127f,  0.0f,
@@ -107,41 +107,39 @@ int main( void ) {
     0.25f, -0.4330127f,  0.0f,
     0.5f,  0.0f,  0.0f  // repeat first outer vertex to close the fan
   };
-  // Set a vertex Buffer Object (VBO)
-  GLuint vbo = 0;
-  glGenBuffers( 1, &vbo );
-  glBindBuffer( GL_ARRAY_BUFFER, vbo );
-  glBufferData( GL_ARRAY_BUFFER, 8 * 3 * sizeof( float ), points, GL_STATIC_DRAW );
-
-  // Set a Vertex Array Object (VAO)
-  GLuint vao = 0;
-  glGenVertexArrays( 1, &vao );
-  glBindVertexArray( vao );
+  // Set a vertex Buffer Object (VBO) and Vertex Array Object (VAO) for the triangle.
+  GLuint triangle_vbo = 0;
+  GLuint triangle_vao = 0;
+  glGenBuffers( 1, &triangle_vbo );
+  glBindBuffer( GL_ARRAY_BUFFER, triangle_vbo );
+  glBufferData( GL_ARRAY_BUFFER, 3 * 3 * sizeof( float ), t_points, GL_STATIC_DRAW );
+  glGenVertexArrays( 1, &triangle_vao );
+  glBindVertexArray( triangle_vao );
   glEnableVertexAttribArray( 0 );
-  glBindBuffer( GL_ARRAY_BUFFER, vbo );
+  glBindBuffer( GL_ARRAY_BUFFER, triangle_vbo );
   glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 0, NULL );
-
-  /*
-  unsigned int VAO, VBO;
-  glGenVertexArrays( 1, &VAO );
-  glGenBuffers( 1, &VBO );
-  // Bind the Vertex Array Object first, then bind and set vertex buffer(s), and then configure vertex attributes(s).
-  glBindVertexArray( VAO );
-  glBindBuffer( GL_ARRAY_BUFFER, VBO );
-  glBufferData( GL_ARRAY_BUFFER, sizeof( points ), points, GL_STATIC_DRAW );
-  glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof( float ), ( void * ) 0 );
-  glEnableVertexAttribArray( 0 );
-  // Note that this is allowed, the call to glVertexAttribPointer registered VBO as the vertex attribute's bound vertex buffer object so afterwards we can safely unbind
-  glBindBuffer( GL_ARRAY_BUFFER, 0 );
-  // You can unbind the VAO afterwards so other VAO calls won't accidentally modify this VAO, but this rarely happens. Modifying other
-  // VAOs requires a call to glBindVertexArray anyways so we generally don't unbind VAOs (nor VBOs) when it's not directly necessary.
   glBindVertexArray( 0 );
-  */
+
+  // Set a vertex Buffer Object (VBO) for the hexagon.
+  GLuint  hex_vbo = 0;
+  glGenBuffers( 1, &hex_vbo );
+  glBindBuffer( GL_ARRAY_BUFFER, hex_vbo );
+  glBufferData( GL_ARRAY_BUFFER, 8 * 3 * sizeof( float ), hex_points, GL_STATIC_DRAW );
+
+  // Set a Vertex Array Object (VAO) for the hexagon.
+  GLuint hex_vao = 0;
+  glGenVertexArrays( 1, &hex_vao );
+  glBindVertexArray( hex_vao );
+  glEnableVertexAttribArray( 0 );
+  glBindBuffer( GL_ARRAY_BUFFER, hex_vbo );
+  glVertexAttribPointer( 0, 3, GL_FLOAT, GL_FALSE, 0, NULL );
+  glBindVertexArray( 0 );
+
 
   // Load Vertex shader from file
-  FILE* vs_file = fopen("shader2.vert", "r");
+  FILE* vs_file = fopen("bouncing.vert", "r");
   if (!vs_file) {
-    fprintf(stderr, "ERROR: Could not open shader.vert\n");
+    fprintf(stderr, "ERROR: Could not open bouncing.vert\n");
     glfwTerminate();
     return 1;
   }
@@ -155,28 +153,28 @@ int main( void ) {
 
 
 
-  // Create and compile the vertex shader
-  GLuint vs = glCreateShader( GL_VERTEX_SHADER );
-  glShaderSource( vs, 1, (const GLchar **) &vertex_shader, NULL );
-  glCompileShader( vs );
+  // Load and compile the bouncing vertex shader
+  GLuint bouncing_vs = glCreateShader( GL_VERTEX_SHADER );
+  glShaderSource( bouncing_vs, 1, (const GLchar **) &vertex_shader, NULL );
+  glCompileShader( bouncing_vs );
 
   // After glCompileShader check for errors.
   int params = -1;
-  glGetShaderiv( vs, GL_COMPILE_STATUS, &params );
+  glGetShaderiv( bouncing_vs, GL_COMPILE_STATUS, &params );
 
   // On error, capture the log and print it.
   if ( GL_TRUE != params ) {
     int max_length    = 2048, actual_length = 0;
     char slog[2048];
-    glGetShaderInfoLog( vs, max_length, &actual_length, slog );
-    fprintf( stderr, "ERROR: Vertex Shader (index %u) did not compile.\n%s\n", vs, slog );
+    glGetShaderInfoLog( bouncing_vs, max_length, &actual_length, slog );
+    fprintf( stderr, "ERROR: Bouncing vertex shader did not compile.\n%s\n", slog );
     return 1;
   }
 
   // Load Fragment shader from file
-  FILE* fs_file = fopen("shader2.frag", "r");
+  FILE* fs_file = fopen("bouncing.frag", "r");
   if (!fs_file) {
-    fprintf(stderr, "ERROR: Could not open shader.frag\n");
+    fprintf(stderr, "ERROR: Could not open bouncing.frag\n");
     glfwTerminate();
     return 1;
   }
@@ -188,39 +186,107 @@ int main( void ) {
   fragment_shader[fs_size] = '\0';
   fclose(fs_file);
 
-  // Create and compile the fragment shader
-  GLuint fs = glCreateShader( GL_FRAGMENT_SHADER );
-  glShaderSource( fs, 1, (const GLchar **) &fragment_shader, NULL );
-  glCompileShader( fs );
+  // Load and compile the bouncing fragment shader
+  GLuint bouncing_fs = glCreateShader( GL_FRAGMENT_SHADER );
+  glShaderSource( bouncing_fs, 1, (const GLchar **) &fragment_shader, NULL );
+  glCompileShader( bouncing_fs );
 
   // After glCompileShader check for errors.
   params = -1;
-  glGetShaderiv( fs, GL_COMPILE_STATUS, &params );
+  glGetShaderiv( bouncing_fs, GL_COMPILE_STATUS, &params );
 
   // On error, capture the log and print it.
   if ( GL_TRUE != params ) {
     int max_length    = 2048, actual_length = 0;
     char slog[2048];
-    glGetShaderInfoLog( fs, max_length, &actual_length, slog );
-    fprintf( stderr, "ERROR: Fragment Shader (index %u) did not compile.\n%s\n", fs, slog );
+    glGetShaderInfoLog( bouncing_fs, max_length, &actual_length, slog );
+    fprintf( stderr, "ERROR: Bouncing fragment shader did not compile.\n%s\n", slog );
     return 1;
   }
 
-  // Link the vertex and fragment shader into a shader program
-  GLuint shader_program = glCreateProgram();
-  glAttachShader( shader_program, vs );
-  glAttachShader( shader_program, fs );
-  glLinkProgram( shader_program);
+  // Link the bouncing shaders into a program
+  GLuint bouncing_program = glCreateProgram();
+  glAttachShader( bouncing_program, bouncing_vs );
+  glAttachShader( bouncing_program, bouncing_fs );
+  glLinkProgram( bouncing_program );
 
-  // Delete the now-unused shader objects
-  glDeleteShader( vs );
-  glDeleteShader( fs );
+  glDeleteShader( bouncing_vs );
+  glDeleteShader( bouncing_fs );
+  free( vertex_shader );
+  free( fragment_shader );
+
+  // Load static vertex shader from file
+  vs_file = fopen("static.vert", "r");
+  if (!vs_file) {
+    fprintf(stderr, "ERROR: Could not open static.vert\n");
+    glfwTerminate();
+    return 1;
+  }
+  fseek(vs_file, 0, SEEK_END);
+  vs_size = ftell(vs_file);
+  fseek(vs_file, 0, SEEK_SET);
+  char* static_vertex_shader = (char*)malloc(vs_size + 1);
+  fread(static_vertex_shader, 1, vs_size, vs_file);
+  static_vertex_shader[vs_size] = '\0';
+  fclose(vs_file);
+
+  GLuint static_vs = glCreateShader( GL_VERTEX_SHADER );
+  glShaderSource( static_vs, 1, (const GLchar **) &static_vertex_shader, NULL );
+  glCompileShader( static_vs );
+
+  params = -1;
+  glGetShaderiv( static_vs, GL_COMPILE_STATUS, &params );
+  if ( GL_TRUE != params ) {
+    int max_length    = 2048, actual_length = 0;
+    char slog[2048];
+    glGetShaderInfoLog( static_vs, max_length, &actual_length, slog );
+    fprintf( stderr, "ERROR: Static vertex shader did not compile.\n%s\n", slog );
+    return 1;
+  }
+
+  fs_file = fopen("static.frag", "r");
+  if (!fs_file) {
+    fprintf(stderr, "ERROR: Could not open static.frag\n");
+    glfwTerminate();
+    return 1;
+  }
+  fseek(fs_file, 0, SEEK_END);
+  fs_size = ftell(fs_file);
+  fseek(fs_file, 0, SEEK_SET);
+  char* static_fragment_shader = (char*)malloc(fs_size + 1);
+  fread(static_fragment_shader, 1, fs_size, fs_file);
+  static_fragment_shader[fs_size] = '\0';
+  fclose(fs_file);
+
+  GLuint static_fs = glCreateShader( GL_FRAGMENT_SHADER );
+  glShaderSource( static_fs, 1, (const GLchar **) &static_fragment_shader, NULL );
+  glCompileShader( static_fs );
+
+  params = -1;
+  glGetShaderiv( static_fs, GL_COMPILE_STATUS, &params );
+  if ( GL_TRUE != params ) {
+    int max_length    = 2048, actual_length = 0;
+    char slog[2048];
+    glGetShaderInfoLog( static_fs, max_length, &actual_length, slog );
+    fprintf( stderr, "ERROR: Static fragment shader did not compile.\n%s\n", slog );
+    return 1;
+  }
+
+  GLuint static_program = glCreateProgram();
+  glAttachShader( static_program, static_vs );
+  glAttachShader( static_program, static_fs );
+  glLinkProgram( static_program );
+
+  glDeleteShader( static_vs );
+  glDeleteShader( static_fs );
+  free( static_vertex_shader );
+  free( static_fragment_shader );
   
   
   double prev_s =  glfwGetTime(); // Set the initial 'previous time'.
   double title_countdown_s = 0.1;
   
-  int time_loc = glGetUniformLocation( shader_program, "time" );
+  int time_loc = glGetUniformLocation( bouncing_program, "time" );
   assert( time_loc > -1 ); // If this assert fails, check the name of the uniform variable in the shader, and that it's actually used in the shader code.
 
   while ( !glfwWindowShouldClose( window ) ) {
@@ -257,20 +323,22 @@ int main( void ) {
     glClearColor( 0.6f, 0.6f, 0.8f, 1.0f );
     glClear( GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT );
 
-    // Put the shader program, and the VAO, in focus in OpenGL's state machine.
-    glUseProgram( shader_program );
-    
-    // Update the 'time' uniform in the shader to the current time in seconds.
-    glUniform1f( time_loc, (float)curr_s );
-        
-    glBindVertexArray( vao );
+    // Draw the background triangle with static shaders.
+    glUseProgram( static_program );
+    glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
+    glBindVertexArray( triangle_vao );
+    glDrawArrays( GL_TRIANGLES, 0, 3 );
 
-    // Draw the hexagon wireframe with center spokes.
+    // Draw the bouncing hexagon wireframe with bouncing shaders.
+    glUseProgram( bouncing_program );
+    glUniform1f( time_loc, (float)curr_s );
+    glBindVertexArray( hex_vao );
     glPolygonMode( GL_FRONT_AND_BACK, GL_LINE );
     glLineWidth( 2.0f );
     glDrawArrays( GL_TRIANGLE_FAN, 0, 8 );
     glPolygonMode( GL_FRONT_AND_BACK, GL_FILL );
 
+    glBindVertexArray( 0 );
     glfwSwapInterval( 0 ); // The value of 0 means "swap immediately".
     //glfwSwapInterval( 1 ); // Lock to normal refresh rate for your monitor.
     
